@@ -70,7 +70,7 @@ PETFINDER_ANIMALS_URL = "https://api.petfinder.com/v2/animals"
 
 # Only consider last 24h
 NOW_UTC = datetime.now(timezone.utc)
-CUTOFF_UTC = NOW_UTC - timedelta(hours=24)
+CUTOFF_UTC = NOW_UTC - timedelta(hours=6)
 
 # --------------------
 # Utilities
@@ -200,9 +200,9 @@ def pick_photo(animal: dict):
 
 def build_html_table(animals):
     # Final column order:
-    # Name | Image | Breeds | Size | Age | Gender | Description | Published At | URL
+    # Published At | Name | Image | Breeds | Size | Age | Gender | Description | URL
     headers = [
-        "Name", "Image", "Breeds", "Size", "Age", "Gender", "Description", "Published At", "URL"
+        "Published At", "Name", "Image", "Breeds", "Size", "Age", "Gender", "Description", "URL"
     ]
 
     def join_breeds(b):
@@ -216,6 +216,7 @@ def build_html_table(animals):
 
     rows_html = []
     for a in animals:
+        # Core fields
         name = a.get("name", "") or ""
         size = a.get("size", "") or ""
         breeds = join_breeds(a.get("breeds", {}) or {})
@@ -232,15 +233,17 @@ def build_html_table(animals):
             if thumb else ""
         )
 
-        # Published At (Eastern)
+        # Published At (Eastern), now first column
         pub = parse_dt(a.get("published_at", "")) or None
         published_at_str = to_eastern_str(pub)
 
+        # Listing URL
         url = a.get("url", "") or ""
         url_cell = f'<a href="{html.escape(url)}">Link</a>' if url else ""
 
         # Cells order MUST match headers order
         cells = [
+            html.escape(published_at_str),   # Published At first
             html.escape(name),
             image_cell,
             html.escape(breeds),
@@ -248,7 +251,6 @@ def build_html_table(animals):
             html.escape(age),
             html.escape(gender),
             desc,
-            html.escape(published_at_str),
             url_cell,
         ]
         rows_html.append("<tr>" + "".join(f"<td>{c}</td>" for c in cells) + "</tr>")
@@ -256,7 +258,7 @@ def build_html_table(animals):
     table_body = (
         "".join(rows_html)
         if rows_html
-        else f"<tr><td colspan='{len(headers)}'>No matching dogs in the last 24 hours.</td></tr>"
+        else f"<tr><td colspan='{len(headers)}'>No matching dogs in the last 6 hours.</td></tr>"
     )
 
     table = f"""
@@ -270,6 +272,7 @@ def build_html_table(animals):
     </table>
     """
     return table
+
 
 def send_email(subject: str, html_body: str):
     msg = EmailMessage()
@@ -303,7 +306,7 @@ def main():
 
     animals = fetch_all_animals()
     html_table = build_html_table(animals)
-    subject = f"Dog Digest: {len(animals)} matches in last 24h (run @ {NOW_UTC.isoformat()})"
+    subject = f"ADR+Shappy Dog Search: {len(animals)} matches in last 6h (run @ {NOW_UTC.isoformat()})"
     send_email(subject, f"<div>{html_table}</div>")
     print(f"Sent digest with {len(animals)} dogs to: {', '.join(RECIPIENTS)}")
 
