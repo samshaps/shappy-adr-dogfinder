@@ -191,7 +191,9 @@ def analyze_dogs_with_openai(animals: list) -> str:
         Dog data:
         {str(dog_data)}
         
-        Format your response as a clean HTML list with the top 5 dogs.
+        IMPORTANT: Return ONLY clean HTML without any markdown formatting, code blocks, or backticks. 
+        Use proper HTML tags like <ul>, <li>, <strong>, <p>, etc.
+        Do not wrap the response in ```html or any other markdown syntax.
         """
         
         response = client.chat.completions.create(
@@ -214,6 +216,16 @@ def analyze_dogs_with_openai(animals: list) -> str:
         content = response.choices[0].message.content
         if not content:
             return "OpenAI API returned empty content."
+        
+        # Clean up any markdown formatting that might have slipped through
+        content = content.strip()
+        if content.startswith("```html"):
+            content = content[7:]  # Remove ```html
+        if content.startswith("```"):
+            content = content[3:]   # Remove ```
+        if content.endswith("```"):
+            content = content[:-3]  # Remove trailing ```
+        content = content.strip()
         
         return content
         
