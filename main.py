@@ -26,7 +26,7 @@ RECIPIENTS = [r.strip() for r in os.getenv("RECIPIENTS", "adriennedanaross@gmail
 
 DEFAULT_ZIPS = ["08401", "11211", "19003"]
 ZIP_CODES = [z.strip() for z in os.getenv("ZIP_CODES", "").split(",") if z.strip()] or DEFAULT_ZIPS
-DISTANCE_MILES = int(os.getenv("DISTANCE_MILES", "100"))
+DISTANCE_MILES = getenv_int("DISTANCE_MILES", 100)
 
 # Breed exclusions (case-insensitive substring match)
 EXCLUDED_BREEDS = {
@@ -54,6 +54,21 @@ CUTOFF_UTC = NOW_UTC - timedelta(hours=24)
 # --------------------
 # Utilities
 # --------------------
+
+def getenv_int(name: str, default: int) -> int:
+    val = os.getenv(name)
+    if val is None:
+        return default
+    val = val.strip()
+    if not val:
+        return default
+    try:
+        return int(val)
+    except ValueError:
+        return default
+
+
+
 def get_token() -> str:
     resp = requests.post(
         PETFINDER_TOKEN_URL,
