@@ -199,9 +199,10 @@ def pick_photo(animal: dict):
 
 
 def build_html_table(animals):
+    # Final column order:
+    # Name | Image | Breeds | Size | Age | Gender | Description | Published At | URL
     headers = [
-        "Name","Image","Size","Breeds","Age","Gender","Description","Videos",
-        "Contact Email","Contact Phone","Published At","URL",
+        "Name", "Image", "Breeds", "Size", "Age", "Gender", "Description", "Published At", "URL"
     ]
 
     def join_breeds(b):
@@ -215,56 +216,56 @@ def build_html_table(animals):
 
     rows_html = []
     for a in animals:
-        name = a.get("name", "")
-        thumb, full_img = pick_photo(a)
-        image_cell = f'<a href="{html.escape(full_img)}"><img src="{html.escape(thumb)}" alt="photo" style="height:64px;width:auto;border-radius:6px;"/></a>' if thumb else ""
-        size = a.get("size", "")
+        name = a.get("name", "") or ""
+        size = a.get("size", "") or ""
         breeds = join_breeds(a.get("breeds", {}) or {})
-        age = a.get("age", "")
-        gender = a.get("gender", "")
-        desc = a.get("description", "") or ""
-        desc = html.escape(" ".join(desc.split()))[:600]
+        age = a.get("age", "") or ""
+        gender = a.get("gender", "") or ""
+        desc_raw = a.get("description", "") or ""
+        desc = html.escape(" ".join(desc_raw.split()))[:600]
 
-        vids = a.get("videos", []) or []
-        video_links = []
-        for v in vids:
-            url = None
-            if isinstance(v, dict):
-                url = v.get("url") or v.get("embed")
-            elif isinstance(v, str):
-                url = v
-            if url:
-                esc = html.escape(url)
-                video_links.append(f'<a href="{esc}">video</a>')
-        videos_cell = ", ".join(video_links)
+        # Image (thumbnail linking to full-size)
+        thumb, full_img = pick_photo(a)
+        image_cell = (
+            f'<a href="{html.escape(full_img)}" target="_blank" rel="noopener">'
+            f'<img src="{html.escape(thumb)}" alt="photo" style="height:64px;width:auto;border-radius:6px;"/></a>'
+            if thumb else ""
+        )
 
-        contact = a.get("contact", {}) or {}
-        contact_email = contact.get("email", "") or ""
-        contact_phone = contact.get("phone", "") or ""
-
+        # Published At (Eastern)
         pub = parse_dt(a.get("published_at", "")) or None
         published_at_str = to_eastern_str(pub)
 
         url = a.get("url", "") or ""
+        url_cell = f'<a href="{html.escape(url)}">Link</a>' if url else ""
 
+        # Cells order MUST match headers order
         cells = [
-            html.escape(name),html.escape(size or ""),html.escape(breeds or ""),
+            html.escape(name),
             image_cell,
-            html.escape(age or ""),html.escape(gender or ""),desc,videos_cell,
-            html.escape(contact_email),html.escape(contact_phone),
+            html.escape(breeds),
+            html.escape(size),
+            html.escape(age),
+            html.escape(gender),
+            desc,
             html.escape(published_at_str),
-            f'<a href="{html.escape(url)}">Link</a>' if url else "",
+            url_cell,
         ]
-        row = "<tr>" + "".join(f"<td>{c}</td>" for c in cells) + "</tr>"
-        rows_html.append(row)
+        rows_html.append("<tr>" + "".join(f"<td>{c}</td>" for c in cells) + "</tr>")
+
+    table_body = (
+        "".join(rows_html)
+        if rows_html
+        else f"<tr><td colspan='{len(headers)}'>No matching dogs in the last 24 hours.</td></tr>"
+    )
 
     table = f"""
-    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.3; width:100%;">
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.3;width:100%;">
       <thead style="background:#f5f5f5;">
         <tr>{"".join(f"<th style='text-align:left;'>{h}</th>" for h in headers)}</tr>
       </thead>
       <tbody>
-        {''.join(rows_html) if rows_html else '<tr><td colspan="11">No matching dogs in the last 24 hours.</td></tr>'}
+        {table_body}
       </tbody>
     </table>
     """
