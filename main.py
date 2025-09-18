@@ -13,6 +13,18 @@ import requests
 # --------------------
 load_dotenv()
 
+def getenv_int(name: str, default: int) -> int:
+    val = os.getenv(name)
+    if val is None:
+        return default
+    val = val.strip()
+    if not val:
+        return default
+    try:
+        return int(val)
+    except ValueError:
+        return default
+
 PETFINDER_CLIENT_ID = os.getenv("PETFINDER_CLIENT_ID", "").strip()
 PETFINDER_CLIENT_SECRET = os.getenv("PETFINDER_CLIENT_SECRET", "").strip()
 
@@ -54,20 +66,6 @@ CUTOFF_UTC = NOW_UTC - timedelta(hours=24)
 # --------------------
 # Utilities
 # --------------------
-
-def getenv_int(name: str, default: int) -> int:
-    val = os.getenv(name)
-    if val is None:
-        return default
-    val = val.strip()
-    if not val:
-        return default
-    try:
-        return int(val)
-    except ValueError:
-        return default
-
-
 
 def get_token() -> str:
     resp = requests.post(
