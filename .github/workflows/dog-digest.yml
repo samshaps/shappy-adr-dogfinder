@@ -34,5 +34,5 @@ jobs:
           SENDER_NAME: ${{ secrets.SENDER_NAME }}
           RECIPIENTS: ${{ secrets.RECIPIENTS }}
           ZIP_CODES: ${{ secrets.ZIP_CODES }}
-          DISTANCE_MILES: ${{ secrets.DISTANCE_MILES }}
+          DISTANCE_MILES: ${{ secrets.DISTANCE_MILES || '100' }}
         run: python main.py
