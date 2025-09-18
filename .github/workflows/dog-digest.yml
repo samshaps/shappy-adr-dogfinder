@@ -35,4 +35,5 @@ jobs:
           RECIPIENTS: ${{ secrets.RECIPIENTS }}
           ZIP_CODES: ${{ secrets.ZIP_CODES }}
           DISTANCE_MILES: ${{ secrets.DISTANCE_MILES || '100' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python main.py
