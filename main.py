@@ -113,15 +113,15 @@ def collect_animals_for_zip(session, token: str, zip_code: str):
     headers = {"Authorization": f"Bearer {token}"}
     while True:
         params = {
-            "type": "dog",
-            "status": "adoptable",
-            "location": zip_code,
-            "distance": DISTANCE_MILES,
-            "age": "young,puppy",
-            "sort": "recent",
-            "limit": "100",
-            "page": str(page),
-        }
+        "type": "dog",
+        "status": "adoptable",
+        "location": zip_code,
+        "distance": DISTANCE_MILES,
+        "age": "young,baby",  # Petfinder valid values: baby, young, adult, senior
+        "sort": "recent",
+        "limit": "100",
+        "page": str(page),
+}
         r = session.get(PETFINDER_ANIMALS_URL, headers=headers, params=params, timeout=30)
         r.raise_for_status()
         payload = r.json()
