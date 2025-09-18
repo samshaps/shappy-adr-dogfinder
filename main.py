@@ -71,14 +71,12 @@ def safe_lower(s):
     return s.lower() if isinstance(s, str) else ""
 
 def breed_excluded(breeds_obj: dict) -> bool:
-    # Check primary, secondary, mixed/unknown strings for excluded substrings
     names = []
     if isinstance(breeds_obj, dict):
         for key in ("primary", "secondary"):
             val = breeds_obj.get(key)
             if isinstance(val, str) and val.strip():
                 names.append(val.strip())
-        # Some entries may have "mixed" flags without explicit names; nothing to check there.
     text = " ".join(names)
     low = text.lower()
     for banned in EXCLUDED_BREEDS:
@@ -87,7 +85,6 @@ def breed_excluded(breeds_obj: dict) -> bool:
     return False
 
 def parse_dt(dt_str: str):
-    # Petfinder returns ISO8601 with timezone, e.g. "2025-09-18T04:25:04+00:00"
     try:
         return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
     except Exception:
@@ -101,7 +98,6 @@ def collect_animals_for_zip(session, token: str, zip_code: str):
     results = []
     page = 1
     headers = {"Authorization": f"Bearer {token}"}
-    # We’ll paginate until no results or oldest page is beyond cutoff
     while True:
         params = {
             "type": "dog",
@@ -109,7 +105,7 @@ def collect_animals_for_zip(session, token: str, zip_code: str):
             "location": zip_code,
             "distance": DISTANCE_MILES,
             "age": "young,puppy",
-            "sort": "recent",       # most recent published first
+            "sort": "recent",
             "limit": "100",
             "page": str(page),
         }
@@ -120,8 +116,6 @@ def collect_animals_for_zip(session, token: str, zip_code: str):
         if not animals:
             break
 
-        # If the last animal on the page is older than cutoff, we still need to scan current page fully,
-        # but can break after this page.
         last_published = parse_dt(animals[-1].get("published_at", "")) if animals else None
         results.extend(animals)
 
@@ -130,11 +124,10 @@ def collect_animals_for_zip(session, token: str, zip_code: str):
         if page >= total_pages:
             break
         if last_published and last_published < CUTOFF_UTC:
-            # Older than 24h; next pages will be even older
             break
 
         page += 1
-        time.sleep(0.3)  # be polite to API
+        time.sleep(0.3)
     return results
 
 def fetch_all_animals():
@@ -144,17 +137,13 @@ def fetch_all_animals():
         for z in ZIP_CODES:
             animals = collect_animals_for_zip(session, token, z)
             for a in animals:
-                # Filter by published within 24h immediately
                 if not within_24_hours(a.get("published_at", "")):
                     continue
-                # Exclude breeds per rules
                 if breed_excluded(a.get("breeds", {}) or {}):
                     continue
-                # De-duplicate by id
                 aid = a.get("id")
                 if aid is not None and aid not in all_animals:
                     all_animals[aid] = a
-    # Sort by published_at desc
     sorted_animals = sorted(
         all_animals.values(),
         key=lambda x: parse_dt(x.get("published_at", "")) or datetime.fromtimestamp(0, tz=timezone.utc),
@@ -163,19 +152,9 @@ def fetch_all_animals():
     return sorted_animals
 
 def build_html_table(animals):
-    # Headers required by spec
     headers = [
-        "Name",
-        "Size",
-        "Breeds",
-        "Age",
-        "Gender",
-        "Description",
-        "Videos",
-        "Contact Email",
-        "Contact Phone",
-        "Published At",
-        "URL",
+        "Name","Size","Breeds","Age","Gender","Description","Videos",
+        "Contact Email","Contact Phone","Published At","URL",
     ]
 
     def join_breeds(b):
@@ -185,7 +164,6 @@ def build_html_table(animals):
                 v = b.get(k)
                 if isinstance(v, str) and v.strip():
                     parts.append(v.strip())
-            # Mixed breeds might be indicated by boolean flags; names already captured above.
         return ", ".join(parts) if parts else ""
 
     rows_html = []
@@ -196,10 +174,8 @@ def build_html_table(animals):
         age = a.get("age", "")
         gender = a.get("gender", "")
         desc = a.get("description", "") or ""
-        # Tidy description to a reasonable size; HTML-escape
         desc = html.escape(" ".join(desc.split()))[:600]
 
-        # Videos: Petfinder uses array; elements may have "embed" or "url"
         vids = a.get("videos", []) or []
         video_links = []
         for v in vids:
@@ -218,10 +194,7 @@ def build_html_table(animals):
         contact_phone = contact.get("phone", "") or ""
 
         pub = parse_dt(a.get("published_at", "")) or None
-        # Display in US Eastern (New York); keep explicit timezone in string
         try:
-            # Python 3.9+ zoneinfo alternative without external deps:
-            # GitHub runners default to UTC; just show ISO string w/ offset from API (already TZ-aware).
             published_at_str = pub.astimezone(timezone.utc).isoformat() if pub else ""
         except Exception:
             published_at_str = a.get("published_at", "")
@@ -229,15 +202,9 @@ def build_html_table(animals):
         url = a.get("url", "") or ""
 
         cells = [
-            html.escape(name),
-            html.escape(size or ""),
-            html.escape(breeds or ""),
-            html.escape(age or ""),
-            html.escape(gender or ""),
-            desc,
-            videos_cell,
-            html.escape(contact_email),
-            html.escape(contact_phone),
+            html.escape(name),html.escape(size or ""),html.escape(breeds or ""),
+            html.escape(age or ""),html.escape(gender or ""),desc,videos_cell,
+            html.escape(contact_email),html.escape(contact_phone),
             html.escape(published_at_str),
             f'<a href="{html.escape(url)}">Link</a>' if url else "",
         ]
@@ -261,8 +228,6 @@ def send_email(subject: str, html_body: str):
     msg["Subject"] = subject
     msg["From"] = f"{SENDER_NAME} <{SENDER_EMAIL}>"
     msg["To"] = ", ".join(RECIPIENTS)
-
-    # Plain text fallback
     msg.set_content("Your email client does not support HTML. Please open in an HTML-capable email client.")
     msg.add_alternative(html_body, subtype="html")
 
@@ -272,7 +237,6 @@ def send_email(subject: str, html_body: str):
         server.send_message(msg)
 
 def main():
-    # Basic validations
     missing = []
     for k, v in [
         ("PETFINDER_CLIENT_ID", PETFINDER_CLIENT_ID),
@@ -297,45 +261,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-.github/workflows/dog-digest.yml
-yaml
-Copy code
-name: Dog Digest (every 6 hours)
-
-on:
-  schedule:
-    - cron: "0 */6 * * *"   # every 6 hours, UTC
-  workflow_dispatch:       # manual run if needed
-
-jobs:
-  run-digest:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run script
-        env:
-          PETFINDER_CLIENT_ID: ${{ secrets.PETFINDER_CLIENT_ID }}
-          PETFINDER_CLIENT_SECRET: ${{ secrets.PETFINDER_CLIENT_SECRET }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
-          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
-          SENDER_NAME: ${{ secrets.SENDER_NAME }}
-          RECIPIENTS: ${{ secrets.RECIPIENTS }}
-          ZIP_CODES: ${{ secrets.ZIP_CODES }}
-          DISTANCE_MILES: ${{ secrets.DISTANCE_MILES }}
-        run: |
-          python main.py
