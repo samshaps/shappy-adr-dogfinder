@@ -181,9 +181,26 @@ def fetch_all_animals():
     )
     return sorted_animals
 
+def pick_photo(animal: dict):
+    """Return (thumb_url, full_url) if available, else (None, None)."""
+    p = animal.get("primary_photo_cropped") or {}
+    thumb = p.get("small") or p.get("medium")
+    full = p.get("full") or p.get("large") or thumb
+
+    if not thumb or not full:
+        # Fall back to the first item in photos[]
+        photos = animal.get("photos") or []
+        if photos:
+            first = photos[0] or {}
+            thumb = thumb or first.get("small") or first.get("medium")
+            full = full or first.get("full") or first.get("large") or thumb
+
+    return (thumb, full)
+
+
 def build_html_table(animals):
     headers = [
-        "Name","Size","Breeds","Age","Gender","Description","Videos",
+        "Name","Image","Size","Breeds","Age","Gender","Description","Videos",
         "Contact Email","Contact Phone","Published At","URL",
     ]
 
@@ -199,6 +216,8 @@ def build_html_table(animals):
     rows_html = []
     for a in animals:
         name = a.get("name", "")
+        thumb, full_img = pick_photo(a)
+        image_cell = f'<a href="{html.escape(full_img)}"><img src="{html.escape(thumb)}" alt="photo" style="height:64px;width:auto;border-radius:6px;"/></a>' if thumb else ""
         size = a.get("size", "")
         breeds = join_breeds(a.get("breeds", {}) or {})
         age = a.get("age", "")
@@ -230,6 +249,7 @@ def build_html_table(animals):
 
         cells = [
             html.escape(name),html.escape(size or ""),html.escape(breeds or ""),
+            image_cell,
             html.escape(age or ""),html.escape(gender or ""),desc,videos_cell,
             html.escape(contact_email),html.escape(contact_phone),
             html.escape(published_at_str),
