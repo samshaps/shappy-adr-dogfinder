@@ -7,6 +7,9 @@ from email.message import EmailMessage
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 import requests
+from zoneinfo import ZoneInfo
+EASTERN = ZoneInfo("America/New_York")
+
 
 # --------------------
 # Config & constants
@@ -54,6 +57,12 @@ EXCLUDED_BREEDS = {
     "Rottweiler",
     "English Bulldog",
     "American Staffordshire Terrier",
+    "Doberman Pinscher",
+    "Great Pyrenees",
+    "Boxer",
+    "Hound",
+    "American Bulldog"
+    
 }
 
 PETFINDER_TOKEN_URL = "https://api.petfinder.com/v2/oauth2/token"
@@ -82,6 +91,14 @@ def get_token() -> str:
 
 def safe_lower(s):
     return s.lower() if isinstance(s, str) else ""
+
+def to_eastern_str(dt: datetime) -> str:
+    """Format a timezone-aware datetime into Eastern like 'Thu, Sep 18, 2025 12:35 PM EDT'."""
+    if not dt:
+        return ""
+    local = dt.astimezone(EASTERN)
+    return local.strftime("%a, %b %d, %Y %I:%M %p %Z")
+
 
 def breed_excluded(breeds_obj: dict) -> bool:
     names = []
@@ -207,10 +224,7 @@ def build_html_table(animals):
         contact_phone = contact.get("phone", "") or ""
 
         pub = parse_dt(a.get("published_at", "")) or None
-        try:
-            published_at_str = pub.astimezone(timezone.utc).isoformat() if pub else ""
-        except Exception:
-            published_at_str = a.get("published_at", "")
+        published_at_str = to_eastern_str(pub)
 
         url = a.get("url", "") or ""
 
