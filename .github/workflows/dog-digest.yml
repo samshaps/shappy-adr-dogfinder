@@ -1,9 +1,9 @@
 name: Dog Digest (every 6 hours)
 
-on:
-  schedule:
-    - cron: "0 */6 * * *"
-  workflow_dispatch:
+# on:
+#  schedule:
+#     - cron: "0 */6 * * *"
+#   workflow_dispatch:
 
 jobs:
   run-digest:
